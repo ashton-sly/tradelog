@@ -148,9 +148,48 @@ export default function JournalModal({ entry, onClose, onEdit, onDelete }) {
           </div>
         )}
 
+        {/* Trades list */}
+        {entry.trades?.length > 0 && (
+          <div className="px-6 py-5" style={{ borderTop: '1px solid #1e2a3a' }}>
+            <span className="text-xs uppercase tracking-widest block mb-3" style={{ color: '#64748b' }}>
+              Trades
+            </span>
+            <div
+              className="rounded-lg overflow-hidden"
+              style={{ border: '1px solid #1e2a3a' }}
+            >
+              {entry.trades.map((trade, i) => {
+                const p = Number(trade.pnl)
+                const color = p > 0 ? '#22c55e' : p < 0 ? '#ef4444' : '#94a3b8'
+                const sign = p > 0 ? '+' : ''
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between px-4 py-2.5"
+                    style={{
+                      background: i % 2 === 0 ? '#0a0e1a' : '#0d1220',
+                      borderTop: i > 0 ? '1px solid #1e2a3a' : 'none',
+                    }}
+                  >
+                    <span className="text-sm" style={{ color: '#94a3b8', fontFamily: '"JetBrains Mono", monospace' }}>
+                      {trade.time || '—'}
+                    </span>
+                    <span className="text-sm font-bold" style={{ color, fontFamily: '"JetBrains Mono", monospace' }}>
+                      {sign}${Math.abs(p).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Journal text */}
         {entry.journalText && (
-          <div className="px-6 py-5" style={{ borderTop: shots.length ? '1px solid #1e2a3a' : 'none' }}>
+          <div
+            className="px-6 py-5"
+            style={{ borderTop: (shots.length || entry.trades?.length) ? '1px solid #1e2a3a' : 'none' }}
+          >
             <span className="text-xs uppercase tracking-widest block mb-3" style={{ color: '#64748b' }}>
               Journal
             </span>

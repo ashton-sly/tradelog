@@ -30,11 +30,20 @@ async function fileToBase64(file) {
   })
 }
 
+function emptyTrade() {
+  return { id: crypto.randomUUID(), time: '', pnl: '' }
+}
+
 export default function NewEntryForm({ initialEntry, onSave, onCancel }) {
   const [date, setDate] = useState(initialEntry?.date || today())
   const [pnl, setPnl] = useState(initialEntry?.pnl !== undefined ? String(initialEntry.pnl) : '')
   const [grade, setGrade] = useState(initialEntry?.grade || '')
   const [journalText, setJournalText] = useState(initialEntry?.journalText || '')
+  const [trades, setTrades] = useState(
+    initialEntry?.trades?.length
+      ? initialEntry.trades.map(t => ({ ...t, id: crypto.randomUUID() }))
+      : []
+  )
   const [screenshots, setScreenshots] = useState(
     initialEntry?.screenshots
       ? initialEntry.screenshots.map((src, i) => ({ src, name: `Screenshot ${i + 1}`, size: null }))
@@ -69,6 +78,19 @@ export default function NewEntryForm({ initialEntry, onSave, onCancel }) {
     e.target.value = ''
   }
 
+  // Trade helpers
+  function addTrade() {
+    setTrades(prev => [...prev, emptyTrade()])
+  }
+
+  function removeTrade(id) {
+    setTrades(prev => prev.filter(t => t.id !== id))
+  }
+
+  function updateTrade(id, field, value) {
+    setTrades(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t))
+  }
+
   function validate() {
     const errs = {}
     if (!date) errs.date = 'Date is required'
@@ -87,6 +109,9 @@ export default function NewEntryForm({ initialEntry, onSave, onCancel }) {
       pnl: Number(pnl),
       grade,
       journalText,
+      trades: trades
+        .filter(t => t.time || t.pnl !== '')
+        .map(({ time, pnl: p }) => ({ time, pnl: Number(p) || 0 })),
       screenshots: screenshots.map(s => s.src),
     }
     onSave(entry)
@@ -254,6 +279,100 @@ export default function NewEntryForm({ initialEntry, onSave, onCancel }) {
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Trades */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs uppercase tracking-widest" style={{ color: '#64748b', fontFamily: 'Inter' }}>
+              Trades
+            </label>
+            <button
+              onClick={addTrade}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
+              style={{
+                background: 'rgba(56,189,248,0.1)',
+                color: '#38bdf8',
+                border: '1px solid rgba(56,189,248,0.25)',
+                fontFamily: 'Inter',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(56,189,248,0.18)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(56,189,248,0.1)'}
+            >
+              <span className="text-sm leading-none">+</span> Add Trade
+            </button>
+          </div>
+
+          {trades.length === 0 && (
+            <p className="text-xs py-3 text-center" style={{ color: '#334155', fontFamily: 'Inter' }}>
+              No trades logged — click "+ Add Trade" to add individual trades
+            </p>
+          )}
+
+          {trades.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {/* Column headers */}
+              <div className="grid gap-2 px-1" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
+                <span className="text-xs" style={{ color: '#334155', fontFamily: 'Inter' }}>Time</span>
+                <span className="text-xs" style={{ color: '#334155', fontFamily: 'Inter' }}>PNL ($)</span>
+                <span style={{ width: 32 }} />
+              </div>
+
+              {trades.map(trade => {
+                const tradePnlNum = Number(trade.pnl)
+                const tradePnlColor = trade.pnl === '' ? '#f1f5f9'
+                  : tradePnlNum > 0 ? '#22c55e'
+                  : tradePnlNum < 0 ? '#ef4444'
+                  : '#94a3b8'
+                return (
+                  <div key={trade.id} className="grid gap-2 items-center" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
+                    <input
+                      type="time"
+                      value={trade.time}
+                      onChange={e => updateTrade(trade.id, 'time', e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all"
+                      style={{
+                        background: '#0a0e1a',
+                        border: '1px solid #1e2a3a',
+                        color: '#f1f5f9',
+                        fontFamily: '"JetBrains Mono", monospace',
+                        colorScheme: 'dark',
+                      }}
+                      onFocus={e => e.currentTarget.style.borderColor = '#38bdf8'}
+                      onBlur={e => e.currentTarget.style.borderColor = '#1e2a3a'}
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g. 320 or -180"
+                      value={trade.pnl}
+                      onChange={e => updateTrade(trade.id, 'pnl', e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all"
+                      style={{
+                        background: '#0a0e1a',
+                        border: '1px solid #1e2a3a',
+                        color: tradePnlColor,
+                        fontFamily: '"JetBrains Mono", monospace',
+                      }}
+                      onFocus={e => e.currentTarget.style.borderColor = '#38bdf8'}
+                      onBlur={e => e.currentTarget.style.borderColor = '#1e2a3a'}
+                    />
+                    <button
+                      onClick={() => removeTrade(trade.id)}
+                      className="flex items-center justify-center rounded-lg transition-colors"
+                      style={{ width: 32, height: 36, color: '#64748b', background: '#0a0e1a', border: '1px solid #1e2a3a', flexShrink: 0 }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#ef444450' }}
+                      onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = '#1e2a3a' }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
